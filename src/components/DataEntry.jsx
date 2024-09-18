@@ -88,7 +88,7 @@ const DataEntry = () => {
       };
 
       try {
-        const { data } = await axios.get('http://localhost:5004/api/check-duplicate', {
+        const { data } = await axios.get('http://192.168.27.143:5004/api/check-duplicate', {
           params: { skuId: trimmedSkuId }
         });
 
@@ -96,7 +96,7 @@ const DataEntry = () => {
           alert('You are scanning a duplicate entry, hand over to shipping incharge');
         }
 
-        await axios.post('http://localhsot:5004/api/data-entry', updatedFormData);
+        await axios.post('http://192.168.27.143:5004/api/data-entry', updatedFormData);
         setSuccessMessage('Data submitted successfully');
         setFormData({
           skuId: '',
