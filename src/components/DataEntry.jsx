@@ -12,6 +12,7 @@ const DataEntry = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isDisabled, setIsDisabled] = useState(false);
+  const [debouncedSkuId, setDebouncedSkuId] = useState(formData.skuId);
 
   const skuInputRef = useRef(null);
 
@@ -22,11 +23,20 @@ const DataEntry = () => {
   }, []);
 
   useEffect(() => {
-    // Trigger scan when skuId is exactly 20 characters and matches the required pattern
-    if (formData.skuId.trim().length === 20 && !isSubmitting) {
-      handleScan();
-    }
+    const handler = setTimeout(() => {
+      setDebouncedSkuId(formData.skuId.trim());
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
   }, [formData.skuId]);
+
+  useEffect(() => {
+    if (!isSubmitting && debouncedSkuId) {
+      handleScan(debouncedSkuId);
+    }
+  }, [debouncedSkuId]);
 
   const formatDate = (date) => {
     let d = new Date(date);
@@ -58,13 +68,8 @@ const DataEntry = () => {
     return [year, month, day].join('-') + ' ' + [hours, minutes, seconds].join(':');
   };
 
-  const handleScan = async () => {
-    const trimmedSkuId = formData.skuId.trim(); // Trim spaces
-
-    // Regular expression to check if skuId is of the form "SNXS" followed by exactly 16 digits
-    const skuIdPattern = /^SNXS\d{16}$/;
-
-    if (skuIdPattern.test(trimmedSkuId) && !isSubmitting) {
+  const handleScan = async (skuId) => {
+    if (!isSubmitting) {
       if (formData.stationId === '' || formData.nexsId === '00000001') {
         setError('Station ID or NEXS ID cannot be default values.');
         setIsSubmitting(false);
@@ -81,7 +86,7 @@ const DataEntry = () => {
 
       const updatedFormData = {
         ...formData,
-        skuId: trimmedSkuId, // Use the trimmed SKU ID
+        skuId: skuId.trim(), 
         nexsId: formData.nexsId.trim(), 
         dateOfScan,
         timestamp,
@@ -89,7 +94,7 @@ const DataEntry = () => {
 
       try {
         const { data } = await axios.get('http://192.168.27.143:5004/api/check-duplicate', {
-          params: { skuId: trimmedSkuId }
+          params: { skuId: skuId.trim() }
         });
 
         if (data.isDuplicate) {
@@ -120,8 +125,6 @@ const DataEntry = () => {
         }, 10000);
         setIsSubmitting(false);
       }
-    } else {
-      setError('SKU ID must be of the form "SNXS" followed by exactly 16 digits.');
     }
   };
 
@@ -129,15 +132,15 @@ const DataEntry = () => {
     const { name, value } = e.target;
 
     if (name === 'skuId') {
-      const trimmedValue = value.trim();
+      const trimmedValue = value.replace(/\s+/g, '').toUpperCase(); 
       setFormData((prevState) => ({
         ...prevState,
-        [name]: trimmedValue, // Set the trimmed value
+        [name]: trimmedValue,
       }));
     } else {
       setFormData((prevState) => ({
         ...prevState,
-        [name]: name === 'nexsId' ? value.trim().toUpperCase() : value, 
+        [name]: name === 'nexsId' ? value.replace(/\s+/g, '').toUpperCase() : value,
       }));
     }
   };
